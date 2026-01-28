@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لعبة مطابقة الذاكرة الحديثة</title>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6c5ce7;
+            --secondary: #a29bfe;
+            --bg: #f0f3f7;
+            --card-back: #2d3436;
+            --success: #00b894;
+            --accent: #fd79a8;
+        }
+
+        * {
+            box-sizing: border-box;
+            font-family: 'Tajawal', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        /* شاشة البداية */
+        #start-screen, #game-screen {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 { color: var(--primary); margin-bottom: 20px; }
+        
+        .input-group { margin-bottom: 15px; text-align: right; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; color: #444; }
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        input:focus { border-color: var(--primary); }
+
+        button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            width: 100%;
+            margin-top: 10px;
+            transition: transform 0.2s, background 0.3s;
+        }
+        button:hover { background: var(--secondary); transform: translateY(-2px); }
+
+        /* منطقة اللعب */
+        #game-screen { display: none; max-width: 800px; }
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            background: #eee;
+            padding: 10px;
+            border-radius: 10px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            perspective: 1000px;
+        }
+
+        .card {
+            aspect-ratio: 1;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.6s;
+            cursor: pointer;
+        }
+
+        .card.flipped { transform: rotateY(180deg); }
+
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .card-front { background: var(--card-back); color: white; }
+        .card-back { background: white; transform: rotateY(180deg); }
+
+        /* تذييل الصفحة الإلزامي */
+        footer {
+            margin-top: 30px;
+            text-align: center;
+            background: #2d3436;
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            width: 100%;
+            max-width: 600px;
+            line-height: 1.6;
+        }
+        .footer-info { font-weight: bold; color: var(--secondary); }
+
+        @media (max-width: 400px) {
+            .grid { grid-template-columns: repeat(3, 1fr); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="start-screen">
+        <h1>لعبة مطابقة الذاكرة 🧠</h1>
+        <div class="input-group">
+            <label>اللاعب الأول:</label>
+            <input type="text" id="p1-name" placeholder="أدخل اسمك">
+        </div>
+        <div class="input-group">
+            <label>اللاعب الثاني (اختياري للعب الفردي):</label>
+            <input type="text" id="p2-name" placeholder="أدخل اسم اللاعب الثاني">
+        </div>
+        <button onclick="startGame()">ابدأ اللعب الآن</button>
+    </div>
+
+    <div id="game-screen">
+        <h2 id="turn-display">دور اللاعب: </h2>
+        <div class="stats">
+            <div id="score-p1">اللاعب 1: 0</div>
+            <div id="timer">الوقت: 00:00</div>
+            <div id="score-p2">اللاعب 2: 0</div>
+        </div>
+        <div class="grid" id="game-grid"></div>
+        <button onclick="location.reload()" style="background: var(--accent); margin-top: 20px;">إعادة اللعب</button>
+    </div>
+
+    <footer>
+        <p>اسم الطالب: <span class="footer-info">رائف خالد بن عبدالحافظ عبدالسبحان</span></p>
+        <p>الرقم الجامعي: <span class="footer-info">446002100</span></p>
+        <p>إشراف الدكتور: <span class="footer-info">Mohammed Ahmed Jabali</span></p>
+    </footer>
+
+    <script>
+        const symbols = ['🍎', '🍌', '🍉', '🍇', '🍓', '🍒', '🥑', '🍍'];
+        let cards = [...symbols, ...symbols];
+        let flippedCards = [];
+        let matchedPairs = 0;
+        let isTwoPlayer = false;
+        let currentPlayer = 1;
+        let scores = { p1: 0, p2: 0 };
+        let timerInterval;
+        let seconds = 0;
+
+        function startGame() {
+            const p1 = document.getElementById('p1-name').value || 'لاعب 1';
+            const p2 = document.getElementById('p2-name').value;
+            
+            isTwoPlayer = p2.trim() !== "";
+            document.getElementById('score-p1').innerText = `${p1}: 0`;
+            
+            if(isTwoPlayer) {
+                document.getElementById('score-p2').innerText = `${p2}: 0`;
+                document.getElementById('turn-display').innerText = `دور: ${p1}`;
+            } else {
+                document.getElementById('score-p2').style.display = 'none';
+                document.getElementById('turn-display').innerText = `وضع اللعب الفردي`;
+            }
+
+            document.getElementById('start-screen').style.display = 'none';
+            document.getElementById('game-screen').style.display = 'block';
+            
+            initGame();
+            startTimer();
+        }
+
+        function initGame() {
+            cards.sort(() => Math.random() - 0.5);
+            const grid = document.getElementById('game-grid');
+            cards.forEach((symbol, index) => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <div class="card-face card-front">?</div>
+                    <div class="card-face card-back">${symbol}</div>
+                `;
+                card.onclick = () => flipCard(card, symbol);
+                grid.appendChild(card);
+            });
+        }
+
+        function flipCard(cardElement, symbol) {
+            if (flippedCards.length < 2 && !cardElement.classList.contains('flipped')) {
+                cardElement.classList.add('flipped');
+                flippedCards.push({ element: cardElement, symbol });
+
+                if (flippedCards.length === 2) {
+                    setTimeout(checkMatch, 700);
+                }
+            }
+        }
+
+        function checkMatch() {
+            const [c1, c2] = flippedCards;
+            if (c1.symbol === c2.symbol) {
+                matchedPairs++;
+                updateScore();
+                if (matchedPairs === symbols.length) endGame();
+            } else {
+                c1.element.classList.remove('flipped');
+                c2.element.classList.remove('flipped');
+                if (isTwoPlayer) switchTurn();
+            }
+            flippedCards = [];
+        }
+
+        function updateScore() {
+            if (isTwoPlayer) {
+                scores[`p${currentPlayer}`]++;
+                document.getElementById(`score-p${currentPlayer}`).innerText = 
+                    `${document.getElementById(`p${currentPlayer}-name`).value || 'لاعب ' + currentPlayer}: ${scores[`p${currentPlayer}`]}`;
+            } else {
+                scores.p1++;
+                document.getElementById('score-p1').innerText = `النقاط: ${scores.p1}`;
+            }
+        }
+
+        function switchTurn() {
+            currentPlayer = currentPlayer === 1 ? 2 : 1;
+            const name = document.getElementById(`p${currentPlayer}-name`).value || `لاعب ${currentPlayer}`;
+            document.getElementById('turn-display').innerText = `دور: ${name}`;
+        }
+
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                seconds++;
+                const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
+                const secs = (seconds % 60).toString().padStart(2, '0');
+                document.getElementById('timer').innerText = `الوقت: ${mins}:${secs}`;
+            }, 1000);
+        }
+
+        function endGame() {
+            clearInterval(timerInterval);
+            let message = "مبروك! اكتملت اللعبة.";
+            if (isTwoPlayer) {
+                const p1Name = document.getElementById('p1-name').value || 'لاعب 1';
+                const p2Name = document.getElementById('p2-name').value || 'لاعب 2';
+                if (scores.p1 > scores.p2) message = `الفائز هو: ${p1Name}! 🎉`;
+                else if (scores.p2 > scores.p1) message = `الفائز هو: ${p2Name}! 🎉`;
+                else message = "تعادل رائع! 🤝";
+            }
+            alert(message);
+        }
+    </script>
+</body>
+</html>
