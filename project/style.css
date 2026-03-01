@@ -348,7 +348,10 @@ footer {
     color: var(--text-muted);
     margin-top: 40px;
 }
-
+.table-wrapper {
+    width: 100% ;
+    overflow-x: auto;
+}
 /* ===== Responsive ===== */
 @media (max-width: 900px) {
     .hero { padding: 40px 25px; }
