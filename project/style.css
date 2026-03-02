@@ -188,6 +188,15 @@ table th {
     background: var(--topic-bg);
     font-weight: 900;
 }
+html[lang="ar"] table {
+    direction: rtl;
+    text-align: right;
+}
+
+html[lang="ar"] th,
+html[lang="ar"] td {
+    text-align: right;
+}
 
 /* ===== CLO Table ===== */
 .clo-table th, .clo-table td { text-align: start; }
